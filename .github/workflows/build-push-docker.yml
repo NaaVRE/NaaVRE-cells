@@ -27,6 +27,9 @@ on:
       id:
         description: 'run identifier'
         required: false
+      commit_sha:
+        description: 'Commit SHA to build from'
+        required: false
 
 permissions: write-all
 
@@ -57,6 +60,9 @@ jobs:
       uses: prompt/actions-commit-hash@v3
               
     - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        ref: ${{ github.event.inputs.commit_sha || github.sha }}
 
     # If build_dir is empty or build_dir
     - name: Check build directory
