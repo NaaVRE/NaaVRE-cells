@@ -1,33 +1,72 @@
 # NaaVRE-cells
 
-## Setup
+Template for repositories that build notebook cells into workflow components. These repositories are intended to be used by the [NaaVRE-containerizer-service](https://github.com/NaaVRE/NaaVRE-containerizer-service/).
 
-### Cells repository
+## Setting up a new repository
 
-Repositories using this template publish cells to the Github image registry (ghcr.io) by default, using built-in authentication.
+### Step 1: create the repository
 
-To use another registry, the following following actions secrets and variables must be set in the repository settings:
+Create a new repository using this template.
+
+- For testing or development, a single public repository can be used for all virtual labs. 
+- For deployments, each virtual lab should have its own private repository. The naming convention is `NaaVRE/cells-vl-{virtual lab slug}` or `NaaVRE-cells-vl-{virtual lab slug}`.
+
+### Step 2: configure access to the repository
+
+- Create a fine grained personal access token granting the following permission to the repository:
+  - **Read** access to metadata
+  - **Read** and **Write** access to actions and code
+- If the repo is owned by an organization, make sure that the user who owns the token has `write` permissions to the repo (repo settings > “Collaborators and teams”).
+- Enable workflow write permissions (repo settings > “Actions” > “General” > “Workflow permissions” > check “Read and write permissions” and save).
+
+### Step 3: configure the NaaVRE to use the repository
+
+When deploying with [NaaVRE-helm](https://github.com/NaaVRE/NaaVRE-helm), set the following values for the virtual lab:
+
+```yaml
+jupyterhub:
+  vlabs:
+    {virtual lab slug}:  # e.g. `openlab`
+      configuration:
+        cell_github_url: https://github.com/{owner}/{repo}
+        cell_github_token: github_pat_...  # use the token created at step 2
+        registry_url: ghcr.io/{owner}/{repo}
+```
+
+When running [NaaVRE-containerizer-service](https://github.com/NaaVRE/NaaVRE-containerizer-service/), set the following values in your `configuration.json` for the virtual lab (see [Test on GitHub](https://github.com/NaaVRE/NaaVRE-containerizer-service/#test-on-github) section of the README):
+
+```jsonl
+{
+  "vl_configurations": [
+    {
+      "name": "{virtual lab slug}",  # e.g. `openlab`
+      "cell_github_url": "https://github.com/{owner}/{repo}",
+      "cell_github_token": "github_pat_...",  # use the token created at step 2
+      "registry_url": "ghcr.io/{owner}/{repo}",
+      ...
+      }
+    }
+  ]
+}
+```
+
+### Optional: customize the docker registry
+
+Repositories created from this template use the Github image registry (ghcr.io) by default, with built-in authentication. This works without additional configuration.
+
+To use another registry, set the following actions secrets and variables in the repository settings:
 
 - variable `REGISTRY_NAME` (eg. `https://index.docker.io/v1/` for Docker Hub)
 - secret `REGISTRY_PASSWORD`
 - secret `REGISTRY_USERNAME`
 
-If using self-hosted runners, the following variables must be set (see [QCDIS/choose-action-runner](https://github.com/QCDIS/choose-action-runner)):
+and make sure to update the registry URL is set on the NaaVRE deployment:
 
-- variable `PREFERRED_ACTIONS_RUNNER`
-- secret `RUNNER_ACCESS_TOKEN`
-
-### NaaVRE deployment
-
-Set the following environment variables in the NaaVRE deployment:
-
-- `CELL_GITHUB=https://github.com/this-user/this-repo`
-- `CELL_GITHUB_TOKEN=github_pat_...` (Permissions: read access metadata; read
-  and write access actions and code aka 'Contents' on the current repo)
-
-If using the Github image registry, make sure that workflows have write permissions. In your repo's settings, select “Actions > General”. Under “Workflow permissions”, check “Read and write permissions” and save.
-
-If using another image image registry (e.g. Docker Hub):
-
-- `REGISTRY_URL=https://hub.docker.com/u/my-user`
-
+```yaml
+jupyterhub:
+  vlabs:
+    {virtual lab slug}:
+      configuration:
+        ...
+        registry_url: ghcr.io/{owner}/{repo}
+```
